@@ -161,7 +161,7 @@ jQuery(document).ready(function() {
         "pageLength": 25
       });
     });
-    setTimeout(getRecentBlockTbl, 5000);
+    //setTimeout(getRecentBlockTbl, 5000);
   }
 
   function getBlockTbl () {
@@ -202,11 +202,10 @@ jQuery(document).ready(function() {
         blockInfo (block);
        if(index != -1) {
          transactionInfo (block, index);
-         index = -1;
        }
       }
     });
-    setTimeout(getBlockTbl, 5000);
+    //setTimeout(getBlockTbl, 5000);
   }
 
   ////////////////////////////////////////////////////////////////////////////////////////////

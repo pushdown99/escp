@@ -415,7 +415,7 @@ app.get('/receipts/:id', function(req, res){
 })
 
 app.get('/renter', function(req, res){
-  var sql = "SELECT * FROM escp GROUP BY register";
+  var sql = "SELECT id, name, owner, register, tel, address, max(ts) as ts FROM escp GROUP BY register";
   db.query(sql, function (err, result) {
     if (err) {
       console.error("[mysql] Query (" + err + ")");

@@ -63,11 +63,13 @@ jQuery(document).ready(function() {
       html += '<th>사업자번호</th>';
       html += '<th>전화번호</th>';
       html += '<th>주소</th>';
+      html += '<th>보고</th>';
       html += '<th>상태</th>';
       html += '</tr>';
       html += '</thead>';
       html += '<tbody>';
       $.each(data, function(i, t) {
+        var diff  = moment().unix() - moment(t.ts).unix();
         html += '<tr>';
         html += '<td>' + t.id + '</td>';
         html += '<td>' + t.name + '</td>';
@@ -75,7 +77,13 @@ jQuery(document).ready(function() {
         html += '<td>' + t.register + '</td>';
         html += '<td>' + t.tel + '</td>';
         html += '<td>' + t.address + '</td>';
-        html += '<td>' + '' + '</td>';
+        html += '<td>' + moment(t.ts).format('MM/DD HH:mm:ss') + '</td>';
+        if(diff < 7200) {
+          html += '<td><div class="led-green"></div></td>';
+        }
+        else {
+          html += '<td><div class="led-red"></div></td>';
+        }
         html += '</tr>';
       });
       html += '</tbody>';
