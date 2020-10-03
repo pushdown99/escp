@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+  <meta name="description" content="au theme template">
+  <meta name="author" content="Hau Nguyen">
+  <meta name="keywords" content="au theme template">
+  <title>Dashboard</title>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet" media="all">
+  <link href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css" rel="stylesheet" media="all">
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.0/moment.min.js"></script>
+  <script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
+   <style>
+    body {
+    font-family: Roboto Slab,Helvetica,Arial,sans-serif;
+    text-rendering: optimizeLegibility;
+    -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
+    -ms-overflow-style: scrollbar;
+    -webkit-tap-highlight-color: transparent;
+    }
+    body {
+    --code-font-family: Menlo,Monaco,Consolas,monospace;
+    --font-size: 0.7 rem;
+    --font-weight: 400;
+    --font-weight-bold: 700;
+    --font-weight-heading: 400;
+    --text-muted: #888;
+    --gray-bg: rgba(0,0,0,0.025);
+    --gray-text: #666;
+    --menu-text: #bbb;
+    --body-color: #333;
+    --body-bg: #fff;
+    --border-color: #ebebeb;
+    }
+    img {
+      -webkit-transform: scaleX(-1);
+      transform: scaleX(-1);
+      -webkit-transform: scaleY(-1);
+      transform: scaleY(-1);
+    }
+</style>
+
+</head>
+<body>
+<div class="container-fluid">
+<h2>Ethereum Explorer</h2>
+<hr>
+<br>
+<div class="row">
+  <div class="col-md-6 col-sm-12">
+    <h4>Recent Blocks</h4>
+    <hr><br>
+    <div id="block-info"  ></div>
+  </div>
+  <div class="col-md-6 col-sm-12">
+    <h4>Block Overview</h4>
+    <hr><br>
+    <div id="block-detail"></div>
+    <br><br>
+    <h4>Transation Overview</h4>
+    <hr><br>
+    <div id="transaction-detail"></div>
+  </div>
+</div>
+</div>
+<script type="text/javascript">
+var blocks = [];
+
+function hex_to_ascii(str1) {
+  var hex  = str1.toString().replace('0x','');
+  var str = '';
+  for (var n = 0; n < hex.length; n += 2) {
+    str += String.fromCharCode(parseInt(hex.substr(n, 2), 16));
+  }
+  return str;
+}
+
+function transactionInfo(block, index) {
+  $.getJSON('/json-transaction?block=' + block + '&index=' + index, function(data) {
+    var info  = document.getElementById("transaction-detail");
+    var name  = hex_to_ascii(data.input);
+    var ipfs  = "http://debian.tric.kr:9901/ipfs/" + name; 
+    html = '<table class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">';
+    html += '<tr><td>Block Height</td><td>' + data.blockNumber + '</td></tr>';
+    html += '<tr><td>Block Hash</td><td>' + data.blockHash + '</td></tr>';
+    html += '<tr><td>Index</td><td>' + data.transactionIndex + '</td></tr>';
+    html += '<tr><td>From</td><td>' + data.from + '</td></tr>';
+    html += '<tr><td>To</td><td>' + data.to + '</td></tr>';
+    html += '<tr><td>Hash</td><td>' + data.hash + '</td></tr>';
+    html += '<tr><td>Gas</td><td>' + data.gas + '</td></tr>';
+    html += '<tr><td>Gas Price</td><td>' + data.gasPrice + '</td></tr>';
+    html += '<tr><td>Input</td><td>' + data.input + ' (<a href="' + ipfs + '" target="_blank">' + name + '</a>)</td></tr>';
+    html += '<tr><td>Value</td><td>' + data.value + '</td></tr>';
+    html += '<tr><td>R</td><td>' + data.r + '</td></tr>';
+    html += '<tr><td>S</td><td>' + data.s + '</td></tr>';
+    html += '<tr><td>V</td><td>' + data.v + '</td></tr>';
+    html += '<tr><td>Nonce</td><td>' + data.nonce + '</td></tr>';
+    html += '</table>';
+    info.innerHTML = html;
+  });
+}
+
+function blockInfo (number) {
+  blocks.forEach(t => {
+      html += '<td>' + moment.unix(t.timestamp).format("MM/DD HH:mm:ss") + '</td>';
+    if(t.number == number) {
+      var info  = document.getElementById("block-detail");
+      html = '<table class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">';
+      html += '<tr><td>Block Height</td><td>' + t.number + '</td></tr>';
+      html += '<tr><td>Timestamp</td><td>' + moment.unix(t.timestamp).format("MM/DD HH:mm:ss") + ' (' + t.timestamp +') ' + '</td></tr>';
+      //html += '<tr><td>Transactions</td><td>' + t.transactions + '</td></tr>';
+      html += '<tr><td>Transactions</td><td>';
+      var index = 0;
+      t.transactions.forEach(x => {
+        html += '<a href="javascript:transactionInfo(' + t.number + ',' + index +');">' + x + '</a> ';
+        index += 1;
+      });
+      html += '</td></tr>';
+      html += '<tr><td>Mined by</td><td>' + t.miner + '</td></tr>';
+      html += '<tr><td>Difficulty</td><td>' + t.difficulty + '</td></tr>';
+      html += '<tr><td>Total Difficulty</td><td>' + t.totalDifficulty + '</td></tr>';
+      html += '<tr><td>Size</td><td>' + t.size + '</td></tr>';
+      html += '<tr><td>Gas Used</td><td>' + t.gasUsed + '</td></tr>';
+      html += '<tr><td>Gas Limit</td><td>' + t.gasLimit + '</td></tr>';
+      html += '<tr><td>Extra Data</td><td>' + t.extraData + '</td></tr>';
+      html += '<tr><td>Hash</td><td>' + t.hash + '</td></tr>';
+      html += '<tr><td>Parent Hash</td><td>' + t.parentHash + '</td></tr>';
+      html += '<tr><td>Sha3Uncles</td><td>' + t.sha3Uncles + '</td></tr>';
+      html += '<tr><td>StateRoot</td><td>' + t.stateRoot + '</td></tr>';
+      html += '<tr><td>Nonce</td><td>' + t.nonce + '</td></tr>';
+      html += '</table>';
+      info.innerHTML = html;
+      return;
+    }
+  });
+}
+
+jQuery(document).ready(function() {
+  $.getJSON("/json-block", function(data) {
+    console.log(data);
+    blocks = data;
+    var info  = document.getElementById("block-info");
+    html = '<table id="block-table" class="table table-striped table-bordered table-sm" cellspacing="0" width="100%">';
+    html += '<thead>';
+    html += '<tr>';
+    html += '<th>#Block</th>';
+    html += '<th># of TXs</th>';
+    html += '<th>Size</th>';
+    html += '<th>Gas Limit</th>';
+    html += '<th>Gas Used</th>';
+    html += '<th>Timestamp</th>';
+    html += '</tr>';
+    html += '</thead>';
+    html += '<tbody>';
+    $.each(data, function(i, t) {
+      html += '<tr>';
+      html += '<td><a href="javascript:blockInfo(' + t.number + ');">' + t.number + '</a></td>';
+      html += '<td>' + t.transactions.length + '</td>';
+      html += '<td>' + t.size + '</td>';
+      html += '<td>' + t.gasLimit + '</td>';
+      html += '<td>' + t.gasUsed + '</td>';
+      html += '<td>' + moment.unix(t.timestamp).format("MM/DD HH:mm:ss") + '</td>';
+      html += '</tr>';
+    });
+    html += '</tbody>';
+    html += '</table>';
+    info.innerHTML = html;
+
+    $('#block-table').DataTable({
+      "pagingType": "numbers", // "simple" option for 'Previous' and 'Next' buttons only
+      "order": [[ 0, "desc" ]],
+      "pageLength": 25
+    });
+  });
+});
+</script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js""></script>
+  <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
+<!-- end document-->
+
