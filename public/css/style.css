@@ -1,0 +1,38 @@
+body {
+font-family: Roboto Slab,Helvetica,Arial,sans-serif;
+text-rendering: optimizeLegibility;
+-webkit-text-size-adjust: 100%;
+-ms-text-size-adjust: 100%;
+-ms-overflow-style: scrollbar;
+-webkit-tap-highlight-color: transparent;
+}
+body {
+--code-font-family: Menlo,Monaco,Consolas,monospace;
+--font-size: 0.6 rem;
+--font-weight: 400;
+--font-weight-bold: 700;
+--font-weight-heading: 400;
+--text-muted: #888;
+--gray-bg: rgba(0,0,0,0.025);
+--gray-text: #666;
+--menu-text: #bbb;
+--body-color: #333;
+--body-bg: #fff;
+--border-color: #ebebeb;
+}
+img {
+  -webkit-transform: scaleX(-1);
+  transform: scaleX(-1);
+  -webkit-transform: scaleY(-1);
+  transform: scaleY(-1);
+}
+
+.right {
+  text-align: right;
+  margin-right: 1em;
+}
+
+.left {
+  text-align: left;
+  margin-left: 1em;
+}

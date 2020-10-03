@@ -56,9 +56,16 @@ function toNumber (s) {
   return parseInt(s.replace(/\,/g, ''), 10);
 }
 
-function escpInsert (obj) {
-  var sql = "INSERT INTO escp (name, owner, register, tel, address, items, exvat, vat, total, receive, cash, card, remain, ts) " +
-            "values('" + obj.name + "', '" + obj.owner + "', " + "'" + obj.register + "', '" + obj.tel + "', '" + obj.address + "', '" + obj.items + "', " + toNumber(obj.exvat) + ", " + toNumber(obj.vat) + ", " + toNumber(obj.total) + ", " + toNumber(obj.receive) + ", " + toNumber(obj.cash) + ", " + 0 + ", " + toNumber(obj.remain) + ", FROM_UNIXTIME(" + moment(obj.date)/1000 + "))";
+function escpInsert (obj, url, hash) {
+  var sql = "INSERT INTO escp (name, owner, register, tel, address, items, ipfs, transaction, block, exvat, vat, total, receive, cash, card, remain, ts) " +
+            "values('" + obj.name + "', '" + obj.owner + "', " + "'" + obj.register + "', '" + obj.tel + "', '" + obj.address + "', '" + obj.items + "', '" + url + "', '" + hash +  "', 0, " + toNumber(obj.exvat) + ", " + toNumber(obj.vat) + ", " + toNumber(obj.total) + ", " + toNumber(obj.receive) + ", " + toNumber(obj.cash) + ", 0 , " + toNumber(obj.remain) + ", FROM_UNIXTIME(" + moment(obj.date)/1000 + "))";
+  db.query(sql, function (err, result) {
+    if (err) console.error("[mysql] Insert (" + err + ") : " + sql);
+  });
+}
+
+function escpUpdate (transaction, idx, block) {
+  var sql = "UPDATE escp SET block = '" + block +"', transactionidx = " + idx + " WHERE transaction = '" + transaction + "'";
   db.query(sql, function (err, result) {
     if (err) console.error("[mysql] Insert (" + err + ") : " + sql);
   });
@@ -105,11 +112,11 @@ function checkReceipt(s) {
     console.log(s);
 }
 
-function parseReceipt(s) {
+function parseReceipt(s, path, hash) {
     exec('/usr/bin/php receipt-parser.php ' + '"' + s + '"', function(err, stdout, stderr) {
         var obj = JSON.parse(stdout);
         console.log(obj);
-        escpInsert (obj);
+        escpInsert (obj, path, hash);
     });
 }
 
@@ -207,7 +214,6 @@ function escp1(data) {
    if(idx == 0) idx = data.length - 1;
 
    checkReceipt(iconv.decode(Buffer.from(buf), 'euc-kr').toUpperCase());
-   parseReceipt(iconv.decode(Buffer.from(buf), 'euc-kr').toUpperCase());
 
    return  iconv.decode(Buffer.from(buf), 'euc-kr').toUpperCase();
 
@@ -237,22 +243,34 @@ function hex2bin(hexSource) {
     return bin;
 }
 
-function remit(data) {
+function remit(path, txt) {
   var from = '0x25199ad920e51f27628e1ee1d8485977923258a0';
   var to   = '0x09204c27bd7104fca1b01304f6d643bdef3272b4';
 
   web3.eth.personal.unlockAccount(from,'test123', 600)
-  .then(console.log('Account unlocked!'));
-
-  var txhash = web3.eth.sendTransaction({
-    from: from,
-    to: to,
-    value: web3.utils.toHex(web3.utils.toWei('1','ether')),
-    //gasLimit: web3.utils.toHex(21000),
-    //gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
-    data: web3.utils.toHex(data)
+  .then(resp => {
+    console.log('Account unlocked!');
+    web3.eth.sendTransaction({
+      from: from,
+      to: to,
+      value: web3.utils.toHex(web3.utils.toWei('1','ether')),
+      //gasLimit: web3.utils.toHex(21000),
+      //gasPrice: web3.utils.toHex(web3.utils.toWei('10','gwei')),
+      data: web3.utils.toHex(path)
+    })
+    .on('transactionHash', function(hash){
+      console.log('transactionHash=',hash);
+      parseReceipt(txt, path, hash);
+    })
+    .on('receipt', function(receipt){
+      console.log('receipt=',receipt);
+      escpUpdate (receipt.transactionHash, receipt.transactionIndex, receipt.blockNumber);
+    })
+    //.on('confirmation', function(confirmationNumber, receipt){
+    //  console.log('confirmation=',confirmationNumber + ", " + receipt);
+    //})
+    .on('error', console.error); // If a out of gas error, the second parameter is the receipt.
   });
-  console.log(`txhash=${txhash}`);
 }
 
 app.post('/', function(req, res) {
@@ -271,22 +289,23 @@ app.post('/', function(req, res) {
     });
     var filename = 'pdf/' + rand.generate(16) + '.pdf';
     var out = fs.createWriteStream(filename);
+    var txt = escp1(Buffer.from(req.body.Data, 'hex'));
     doc.pipe(out);
     doc
       .font('fonts/NanumGothicCoding.ttf')
       .fontSize(9)
-      .text(escp1(Buffer.from(req.body.Data, 'hex')), 15, 15);
+      .text(txt, 15, 15);
     doc.end();
     out.on('finish', function() {
       const file = fs.readFileSync(filename);
       ipfs.add(file).then(resp => {
         console.log(resp);
-        remit(resp.path);
+        remit(resp.path, txt);
       });
     });
 
     device.open(function(error) {
-        //printer.buffer.write(Buffer.from(req.body.Data, 'hex'));
+        printer.buffer.write(Buffer.from(req.body.Data, 'hex'));
     });
     res.send(Buffer.from(printer.buffer._buffer).toString('hex'));
 });  
@@ -306,10 +325,39 @@ app.get('/', function(req, res){
 })
 
 app.get('/explorer', function(req, res){
-  res.render('explorer');
+  res.render('explorer', {block: -1, index: -1});
 })
 
-app.get('/json-block', function(req, res){
+app.get('/explorer/:block', function(req, res){
+  var block = req.params.block;
+  console.log('block', block);
+  res.render('explorer', {block: block, index: -1});
+})
+
+app.get('/explorer/:block/:index', function(req, res){
+  var block = req.params.block;
+  var index = req.params.index;
+  console.log('block-index', block + ", " + index);
+  res.render('explorer', {block: block, index: index});
+})
+
+
+app.get('/json-block/:block', function(req, res){
+  var block = req.params.block;
+  var maxblock = 200;
+  var blocks = [];
+  for (i = 0; i < maxblock; i++) {
+    getBlock(block - i).then(block => {
+      blocks.push(block);
+      if(blocks.length >= maxblock) {
+        blocks.sort((a,b) => (a.number < b.number ? 1:-1));
+        res.send(blocks);
+      }
+    });
+  }
+})
+
+app.get('/json-blocks', function(req, res){
   var maxblock = 200;
   var blocks = [];
   getBlockNumber().then(num => {
@@ -336,6 +384,80 @@ app.get('/json-transaction', function(req, res){
     res.send(transaction);
   });
 })
+
+app.get('/receipts', function(req, res){
+  var sql = "SELECT * FROM escp ORDER BY ts DESC LIMIT 100";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      res.send(JSON.stringify(result));
+    }
+    else res.send("");
+  });
+})
+
+app.get('/receipts/:id', function(req, res){
+  var id = req.params.id;
+  var sql = "SELECT * FROM escp WHERE register = '" + id + "' ORDER BY ts DESC";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      res.send(JSON.stringify(result));
+    }
+    else res.send("");
+  });
+})
+
+app.get('/renter', function(req, res){
+  var sql = "SELECT * FROM escp GROUP BY register";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      res.send(JSON.stringify(result));
+    }
+    else res.send("");
+  });
+})
+
+
+app.get('/revenue', function(req, res){
+  var sql = "SELECT id, register, sum(total), sum(cash), sum(card) FROM escp WHERE DATE_FORMAT(ts, '%Y-%m-%d') = CURDATE() GROUP BY register";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      res.send(JSON.stringify(result));
+    }
+    else res.send("");
+  });
+})
+
+app.get('/revenue/:id', function(req, res){
+  var id = req.params.id;
+  var sql = "SELECT id, register, sum(total), sum(cash), sum(card) FROM escp WHERE register = '" + id + "'";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      res.send(JSON.stringify(result));
+    }
+    else res.send("");
+  });
+})
+
 
 ////////////////////////////////////////////////////////
 // listener
