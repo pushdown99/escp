@@ -20,12 +20,6 @@ body {
 --body-bg: #fff;
 --border-color: #ebebeb;
 }
-img {
-  -webkit-transform: scaleX(-1);
-  transform: scaleX(-1);
-  -webkit-transform: scaleY(-1);
-  transform: scaleY(-1);
-}
 
 .right {
   text-align: right;
@@ -35,6 +29,20 @@ img {
 .left {
   text-align: left;
   margin-left: 1em;
+}
+
+.led-red {
+  margin: 0 auto;
+  width: 14px;
+  height: 14px;
+  background-color: #F00;
+  border-radius: 50%;
+  box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #441313 0 -1px 9px, rgba(255, 0, 0, 0.5) 0 2px 12px;
+  -webkit-animation: blinkRed 0.5s infinite;
+  -moz-animation: blinkRed 0.5s infinite;
+  -ms-animation: blinkRed 0.5s infinite;
+  -o-animation: blinkRed 0.5s infinite;
+  animation: blinkRed 0.5s infinite;
 }
 
 .led-green {
@@ -54,4 +62,9 @@ img {
   border-radius: 50%;
   box-shadow: rgba(0, 0, 0, 0.2) 0 -1px 7px 1px, inset #006 0 -1px 9px, #3F8CFF 0 2px 14px;
 }
+
+#map {
+    height: 100%;
+}
+#map-canvas { height: 400px; margin: 0px; padding: 0px }
 

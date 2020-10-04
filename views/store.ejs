@@ -7,6 +7,7 @@
   <meta name="author" content="Hau Nguyen">
   <meta name="keywords" content="au theme template">
   <title>Dashboard</title>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
   <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet" media="all">
   <link href="https://cdn.datatables.net/1.10.22/css/jquery.dataTables.min.css" rel="stylesheet" media="all">
   <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
@@ -17,6 +18,8 @@
   <link rel="stylesheet" href="/css/burger.min.css">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/mdi-font/css/material-design-iconic-font.min.css">
+  <script type="text/javascript" src="https://www.gstatic.com/charts/loader.js"></script>
+  <script type="text/javascript" src="https://www.google.com/jsapi"></script>
 </head>
 
 <body>
@@ -39,6 +42,21 @@
       <hr><br>
       <h5>Renter</h5>
       <div id="renter"></div>
+    </div>
+    <div id="charts"  class="col-md-6 col-sm-12">
+      <hr><br>
+      <h5>Chart</h5>
+      <div class="row">
+        <div id="chart0" class="col-md-6 col-sm-12"></div>
+        <div id="chart1" class="col-md-6 col-sm-12"></div>
+        <div id="chart2" class="col-md-6 col-sm-12"></div>
+        <div id="chart3" class="col-md-6 col-sm-12"></div>
+      </div>
+    </div>
+    <div id="map"  class="col-md-6 col-sm-12">
+      <hr><br>
+      <h5>Location</h5>
+      <div id="map-canvas"></div>
     </div>
     <div class="col-md-12 col-sm-12">
       <hr><br>
@@ -69,9 +87,54 @@
 
 <script type="text/javascript">
   var viewReceipt = null;
+  google.charts.load('visualization', { packages: ['corechart'] });
+  google.charts.setOnLoadCallback(drawChart);
+
+  function drawChart() {
+    $.getJSON('/revenue-hour-chart/<%= id %>/0', function(json) {
+      var ch0 = new google.visualization.DataTable();
+      ch0.addColumn('number', 'Hour');
+      ch0.addColumn('number', 'Revenue length');
+      var options = { title: '매출액(시간대)', curveType: 'none', legend: 'none', lineWidth: 5, height: 200, vAxis: { viewWindowMode:'explicit', viewWindow: { min:-10000 }}};
+      var chart = new google.visualization.LineChart(document.getElementById('chart0'));
+      ch0.addRows(json);
+      chart.draw(ch0, options);
+    });
+    $.getJSON('/count-hour-chart/<%= id %>/0', function(json) {
+      var ch1 = new google.visualization.DataTable();
+      ch1.addColumn('number', 'Hour');
+      ch1.addColumn('number', 'Revenue');
+      var options = { title: '매출건수(시간대)', curveType: 'none', legend: 'none', lineWidth: 5, height: 200, vAxis: { viewWindowMode:'explicit', viewWindow: { min:-1 }}};
+      var chart = new google.visualization.LineChart(document.getElementById('chart1'));
+      ch1.addRows(json);
+      chart.draw(ch1, options);
+    });
+    $.getJSON('/revenue-month-chart/<%= id %>/0', function(json) {
+      var ch2 = new google.visualization.DataTable();
+      ch2.addColumn('number', 'Day');
+      ch2.addColumn('number', 'Revenue');
+      var options = { title: '누적매출(금월)', curveType: 'none', legend: 'none', lineWidth: 5, height: 200, vAxis: { viewWindowMode:'explicit', viewWindow: { min:-100000 }}};
+      var chart = new google.visualization.LineChart(document.getElementById('chart2'));
+      ch2.addRows(json);
+      chart.draw(ch2, options);
+    });
+    $.getJSON('/revenue-day-chart/<%= id %>/7', function(json) {
+      var ch3 = new google.visualization.DataTable();
+      ch3.addColumn('string', 'Day');
+      ch3.addColumn('number', 'Revenue');
+      var options = { title: '최근7일간 매출추이', curveType: 'none', legend: 'none', lineWidth: 5, height: 200, textStyle: { fontName: 'Roboto Slab,Helvetica,Arial,sans-serif', fontSize: 14 }, vAxis: { viewWindowMode:'explicit', viewWindow: { min:-100000 }}};
+      var chart = new google.visualization.LineChart(document.getElementById('chart3'));
+      ch3.addRows(json);
+      chart.draw(ch3, options);
+    });
+  }
 </script>
+
 <script type="text/javascript">
 jQuery(document).ready(function() {
+  var id = '<%= id %>';
+  var location = 0;
+
   viewReceipt = function (file) {
     console.log('call viewReceipt');
     $("#exampleModal").on("shown.bs.modal", function () { 
@@ -85,7 +148,7 @@ jQuery(document).ready(function() {
   }
 
   function getRenterTbl () {
-    $.getJSON("/renter", function(data) {
+    $.getJSON("/renter/" + id, function(data) {
       console.log(data);
       blocks = data;
       var info  = document.getElementById("renter");
@@ -110,9 +173,9 @@ jQuery(document).ready(function() {
         var diff  = moment().unix() - moment(t.ts).unix();
         html += '<tr>';
         if(w > 0) html += '<td>' + t.id + '</td>';
-        if(w > 0) html += '<td><a href="/store/' + t.register + '">' + t.name + '</a></td>';
+        if(w > 0) html += '<td>' + t.name + '</td>';
         if(w > 1024) html += '<td>' + t.owner + '</td>';
-        if(w > 600) html += '<td><a href="/store/' + t.register + '">' + t.register + '</a></td>';
+        if(w > 600) html += '<td>' + t.register + '</td>';
         if(w > 600) html += '<td>' + t.tel + '</td>';
         if(w > 1024) html += '<td>' + t.address + '</td>';
         if(w > 0) html += '<td>' + moment(t.ts).format('MM/DD HH:mm:ss') + '</td>';
@@ -123,6 +186,16 @@ jQuery(document).ready(function() {
           if(w > 0) html += '<td><div class="led-red"></div></td>';
         }
         html += '</tr>';
+
+        ////////////////////////////////////////////////////////////////////////////////////
+        if(location == 0) 
+        $.getJSON("/geocode/" + t.address, function(geo) {
+          $.each(geo.results, function(n, g) {
+            console.log(g.geometry.location);
+            scbaMarker(g.geometry.location.lat, g.geometry.location.lng);
+            location = 1;
+          });
+        });
       });
       html += '</tbody>';
       html += '</table>';
@@ -131,15 +204,16 @@ jQuery(document).ready(function() {
       //////////////////////////////////////////////////////////////////////////////////////
       info.innerHTML = html;
       $('#renter-table').DataTable({
-        "pagingType": "numbers", // "simple" option for 'Previous' and 'Next' buttons only
-        "pageLength": 5
+        paging: false,
+        searching: false,
+        info: false
       });
     });
     setTimeout(getRenterTbl, 5000);
   }
 
   function getReceiptTbl () {
-    $.getJSON("/receipts", function(data) {
+    $.getJSON("/receipts/" + id, function(data) {
       console.log(data);
       blocks = data;
       var info  = document.getElementById("receipts");
@@ -200,9 +274,51 @@ jQuery(document).ready(function() {
 
   getRenterTbl ();
   getReceiptTbl ();
-
+  setInterval(drawChart, 5000);
 });
 </script>
+<script>
+var map;
+var coordinates = [];
+
+function mapBounds () {
+  var bounds = new google.maps.LatLngBounds();
+  console.log(coordinates.length);
+  for (var i=0; i < coordinates.length; i++) {
+    bounds.extend(coordinates[i]);
+  }
+  map.fitBounds(bounds);
+
+  var zoom = map.getZoom();
+  map.setZoom(zoom > 19 ? 19 : zoom);
+}
+
+function scbaMarker (lat, lng) {
+   console.log("scbaMarker: " + lat + ", " + lng);
+   var latlng = new google.maps.LatLng({lat: lat, lng: lng});
+   var marker = new google.maps.Marker({
+     position: latlng,
+     map: map,
+     icon: {
+       path: google.maps.SymbolPath.CIRCLE,
+       scale: 8.5,
+       fillColor: "#F00",
+       fillOpacity: 0.4,
+       strokeWeight: 2.0
+     }
+   });
+   coordinates.push(latlng);
+   mapBounds ();
+}
+
+function initMap() {
+  map = new google.maps.Map(document.getElementById('map-canvas'), {
+   zoom: 19,
+   center: new google.maps.LatLng(35.820471, 127.108721)
+  });
+}
+</script>
+<script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDndqINgUgGs6gENZOWErhIP1bVCQwSf6k&libraries=visualization,geometry,drawing&callback=initMap" async defer></script>
 
 </body>
 

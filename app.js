@@ -7,6 +7,7 @@ var jimp        = require('jimp');
 var npos        = require('npos');
 var express     = require('express');
 var router      = express.Router();
+var urlencode   = require('urlencode');
 var app         = express();
 let iconv       = require('iconv-lite');
 var moment      = require('moment-timezone');
@@ -17,7 +18,8 @@ var ipfs        = ipfsClient('http://127.0.0.1:5001');
 var Web3        = require('web3');
 let web3        = new Web3('http://34.85.24.36:8545');
 var exec        = require('child_process').exec;
-
+var dotenv      = require('dotenv').config()
+ 
 var port        = process.env.PORT || 9901;
 
 var escpos      = require('escpos');
@@ -32,10 +34,10 @@ app.use(express.urlencoded({ extended: true}));
 app.use(express.static(__dirname + '/public'));
 
 var db = mysql.createConnection({
-  host     : 'localhost',
-  user     : 'sqladmin',
-  password : 'admin',
-  database : 'escp'
+  host     : process.env.DB_HOSTNAME,
+  user     : process.env.DB_USERNAME,
+  password : process.env.DB_PASSWORD,
+  database : process.env.DB_DATABASE
 });
 
 db.connect(function(err){
@@ -386,7 +388,7 @@ app.get('/json-transaction', function(req, res){
 })
 
 app.get('/receipts', function(req, res){
-  var sql = "SELECT * FROM escp ORDER BY ts DESC LIMIT 100";
+  var sql = "SELECT * FROM escp ORDER BY ts DESC LIMIT 200";
   db.query(sql, function (err, result) {
     if (err) {
       console.error("[mysql] Query (" + err + ")");
@@ -401,7 +403,7 @@ app.get('/receipts', function(req, res){
 
 app.get('/receipts/:id', function(req, res){
   var id = req.params.id;
-  var sql = "SELECT * FROM escp WHERE register = '" + id + "' ORDER BY ts DESC";
+  var sql = "SELECT * FROM escp WHERE register = '" + id + "' ORDER BY ts DESC LIMIT 200";
   db.query(sql, function (err, result) {
     if (err) {
       console.error("[mysql] Query (" + err + ")");
@@ -412,6 +414,12 @@ app.get('/receipts/:id', function(req, res){
     }
     else res.send("");
   });
+})
+
+app.get('/store/:id', function(req, res){
+  var id = req.params.id.toString();
+  console.log(id);
+  res.render('store', {id: id});
 })
 
 app.get('/renter', function(req, res){
@@ -428,6 +436,20 @@ app.get('/renter', function(req, res){
   });
 })
 
+app.get('/renter/:id', function(req, res){
+  var id = req.params.id;
+  var sql = "SELECT id, name, owner, register, tel, address, max(ts) as ts FROM escp WHERE register = '" + id + "' GROUP BY register";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      res.send(JSON.stringify(result));
+    }
+    else res.send("");
+  });
+})
 
 app.get('/revenue', function(req, res){
   var sql = "SELECT id, register, sum(total), sum(cash), sum(card) FROM escp WHERE DATE_FORMAT(ts, '%Y-%m-%d') = CURDATE() GROUP BY register";
@@ -444,8 +466,8 @@ app.get('/revenue', function(req, res){
 })
 
 app.get('/revenue/:id', function(req, res){
-  var id = req.params.id;
-  var sql = "SELECT id, register, sum(total), sum(cash), sum(card) FROM escp WHERE register = '" + id + "'";
+  var id = req.params.id.toString();
+  var sql = "SELECT id, register, sum(total) total, sum(cash) cash, sum(card) card FROM escp WHERE register = '" + id + "'";
   db.query(sql, function (err, result) {
     if (err) {
       console.error("[mysql] Query (" + err + ")");
@@ -457,6 +479,177 @@ app.get('/revenue/:id', function(req, res){
     else res.send("");
   });
 })
+
+app.get('/revenue-day/:id', function(req, res){
+  var id = req.params.id.toString();
+  var sql = "SELECT id, register, sum(total) total, sum(cash) cash, sum(card) card FROM escp WHERE DATE(ts) = CURDATE() AND register = '" + id + "'";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      res.send(JSON.stringify(result));
+    }
+    else res.send("");
+  });
+})
+
+app.get('/revenue-day/:id/:offset', function(req, res){
+  var id = req.params.id.toString();
+  var offset = req.params.offset;
+  var sql = "SELECT id, register, sum(total) total, sum(cash) cash, sum(card) card FROM escp WHERE DATE(ts) = CURDATE()-" + offset +"  AND register = '" + id + "'";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      res.send(JSON.stringify(result));
+    }
+    else res.send("");
+  });
+})
+
+app.get('/revenue-hour/:id/', function(req, res){
+  var id = req.params.id.toString();
+  var sql = "SELECT a.dt1 as dt, case WHEN b.total is NULL THEN 0 ELSE b.total END as total FROM (SELECT dt + INTERVAL lv-1 HOUR dt1 FROM (SELECT ordinal_position lv, CONCAT(subdate(current_date,0), ' 00') dt FROM information_schema.columns WHERE table_schema = 'mysql' AND table_name = 'user') d WHERE lv < 24) a LEFT OUTER JOIN (SELECT sum(total) total, HOUR(ts) ts FROM escp WHERE register='" + id + "' AND DATE(ts)=CURDATE() GROUP BY HOUR(ts)) b ON HOUR(a.dt1) = b.ts";
+
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      res.send(JSON.stringify(result));
+    }
+    else res.send("");
+  });
+})
+
+
+app.get('/revenue-hour/:id/:offset', function(req, res){
+  var id = req.params.id.toString();
+  var offset = req.params.offset;
+  var sql = "SELECT a.dt1 as dt, case WHEN b.total is NULL THEN 0 ELSE b.total END as total FROM (SELECT dt + INTERVAL lv-1 HOUR dt1 FROM (SELECT ordinal_position lv, CONCAT(subdate(current_date," + offset + "), ' 00') dt FROM information_schema.columns WHERE table_schema = 'mysql' AND table_name = 'user') d WHERE lv <= 24) a LEFT OUTER JOIN (SELECT sum(total) total, HOUR(ts) ts FROM escp WHERE register='" + id + "' AND DATE(ts)=CURDATE()-" + offset + " GROUP BY HOUR(ts)) b ON HOUR(a.dt1) = b.ts";
+
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      res.send(JSON.stringify(result));
+    }
+    else res.send("");
+  });
+})
+
+app.get('/revenue-hour-chart/:id/:offset', function(req, res){
+  var id = req.params.id.toString();
+  var offset = req.params.offset;
+  var sql = "SELECT HOUR(a.dt1) as dt, case WHEN b.total is NULL THEN 0 ELSE b.total END as total FROM (SELECT dt + INTERVAL lv-1 HOUR dt1 FROM (SELECT ordinal_position lv, CONCAT(subdate(current_date," + offset + "), ' 00') dt FROM information_schema.columns WHERE table_schema = 'mysql' AND table_name = 'user') d WHERE lv <= 24 AND dt + INTERVAL lv-1 HOUR <= now()) a LEFT OUTER JOIN (SELECT sum(total) total, HOUR(ts) ts FROM escp WHERE register='" + id + "' AND DATE(ts)=CURDATE()-" + offset + " GROUP BY HOUR(ts)) b ON HOUR(a.dt1) = b.ts";
+
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      var l = [];
+      result.forEach(e => {
+        var o = [];
+        o.push(e.dt);
+        o.push(e.total);
+        l.push(o);
+      });
+      res.send(JSON.stringify(l));
+    }
+    else res.send("");
+  });
+})
+
+app.get('/count-hour-chart/:id/:offset', function(req, res){
+  var id = req.params.id.toString();
+  var offset = req.params.offset;
+  var sql = "SELECT HOUR(a.dt1) as dt, case WHEN b.total is NULL THEN 0 ELSE b.total END as total FROM (SELECT dt + INTERVAL lv-1 HOUR dt1 FROM (SELECT ordinal_position lv, CONCAT(subdate(current_date," + offset + "), ' 00') dt FROM information_schema.columns WHERE table_schema = 'mysql' AND table_name = 'user') d WHERE lv <= 24 AND dt + INTERVAL lv-1 HOUR <= now()) a LEFT OUTER JOIN (SELECT count(total) total, HOUR(ts) ts FROM escp WHERE register='" + id + "' AND DATE(ts)=CURDATE()-" + offset + " GROUP BY HOUR(ts)) b ON HOUR(a.dt1) = b.ts";
+
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      var l = [];
+      result.forEach(e => {
+        var o = [];
+        o.push(e.dt);
+        o.push(e.total);
+        l.push(o);
+      });
+      res.send(JSON.stringify(l));
+    }
+    else res.send("");
+  });
+})
+
+app.get('/revenue-day-chart/:id/:days', function(req, res){
+  var id = req.params.id.toString();
+  var days = req.params.days;
+  var sql = "SELECT DATE_FORMAT(a.dt1,'%m/%d') as dt, case WHEN b.total is NULL THEN 0 ELSE b.total END as total FROM (SELECT dt + INTERVAL lv-1 DAY dt1 FROM (SELECT ordinal_position lv, CONCAT(subdate(current_date," + (days-1) + "), '') dt FROM information_schema.columns WHERE table_schema = 'mysql' AND table_name = 'user') d WHERE lv <= " + days + ") a LEFT OUTER JOIN (SELECT sum(total) total, DAY(ts) ts FROM escp WHERE register='" + id + "' GROUP BY DAY(ts)) b ON DAY(a.dt1) = b.ts";
+
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      var l = [];
+      result.forEach(e => {
+        var o = [];
+        o.push(e.dt);
+        o.push(e.total);
+        l.push(o);
+      });
+      res.send(JSON.stringify(l));
+    }
+    else res.send("");
+  });
+})
+
+app.get('/revenue-month-chart/:id/:months', function(req, res){
+  var id = req.params.id.toString();
+  var months = req.params.months;
+  var sql = "SELECT DAY(a.dt1) as dt, case WHEN b.total is NULL THEN 0 ELSE b.total END as total FROM (SELECT dt + INTERVAL lv-1 DAY dt1 FROM (SELECT ordinal_position lv, CONCAT(DATE_FORMAT(subdate(current_date(), INTERVAL " + months + " MONTH),'%Y%m'), '01') dt FROM information_schema.columns WHERE table_schema = 'mysql' AND table_name = 'user') d WHERE lv <= DAY(LAST_DAY(dt)) AND dt + INTERVAL lv-1 DAY <= current_date()) a LEFT OUTER JOIN (SELECT sum(total) total, MONTH(ts) month, DAY(ts) day FROM escp WHERE register='" + id + "' GROUP BY DAY(ts)) b ON MONTH(a.dt1) = b.month AND DAY(a.dt1) = b.day";
+
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      var l = [];
+      var t = 0;
+      result.forEach(e => {
+        var o = [];
+        t += e.total;
+        o.push(e.dt);
+        o.push(t);
+        l.push(o);
+      });
+      res.send(JSON.stringify(l));
+    }
+    else res.send("");
+  });
+})
+
+app.get('/geocode/:addr', function(req, res){
+  var addr = urlencode(req.params.addr);
+  console.log('https://maps.googleapis.com/maps/api/geocode/json?address='+addr+'&key='+process.env.GOOGLE_API_KEY);
+  request('https://maps.googleapis.com/maps/api/geocode/json?address='+addr+'&key='+process.env.GOOGLE_API_KEY, function (error, response, body) {  
+    res.send(body);
+  });
+});
 
 
 ////////////////////////////////////////////////////////
