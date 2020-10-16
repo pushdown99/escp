@@ -47,10 +47,10 @@
       <hr><br>
       <h5>Chart</h5>
       <div class="row">
-        <div id="chart0" class="col-md-6 col-sm-12"></div>
-        <div id="chart1" class="col-md-6 col-sm-12"></div>
-        <div id="chart2" class="col-md-6 col-sm-12"></div>
-        <div id="chart3" class="col-md-6 col-sm-12"></div>
+        <div class="col-md-6 col-sm-12">시간대별 매출액<div id="chart0"></div></div>
+        <div class="col-md-6 col-sm-12">시간대별 매출건수<div id="chart1"></div></div>
+        <div class="col-md-6 col-sm-12">이번달 누적매출<div id="chart2"></div></div>
+        <div class="col-md-6 col-sm-12">최근 7일간 매출추이<div id="chart3"></div></div>
       </div>
     </div>
     <div id="map"  class="col-md-6 col-sm-12">
@@ -95,7 +95,7 @@
       var ch0 = new google.visualization.DataTable();
       ch0.addColumn('number', 'Hour');
       ch0.addColumn('number', 'Revenue length');
-      var options = { title: '매출액(시간대)', curveType: 'none', legend: 'none', lineWidth: 5, height: 200, vAxis: { viewWindowMode:'explicit', viewWindow: { min:-10000 }}};
+      var options = { curveType: 'function', legend: 'none', lineWidth: 8, height: 200};
       var chart = new google.visualization.LineChart(document.getElementById('chart0'));
       ch0.addRows(json);
       chart.draw(ch0, options);
@@ -104,7 +104,7 @@
       var ch1 = new google.visualization.DataTable();
       ch1.addColumn('number', 'Hour');
       ch1.addColumn('number', 'Revenue');
-      var options = { title: '매출건수(시간대)', curveType: 'none', legend: 'none', lineWidth: 5, height: 200, vAxis: { viewWindowMode:'explicit', viewWindow: { min:-1 }}};
+      var options = { curveType: 'function', legend: 'none', lineWidth: 8, height: 200};
       var chart = new google.visualization.LineChart(document.getElementById('chart1'));
       ch1.addRows(json);
       chart.draw(ch1, options);
@@ -113,7 +113,7 @@
       var ch2 = new google.visualization.DataTable();
       ch2.addColumn('number', 'Day');
       ch2.addColumn('number', 'Revenue');
-      var options = { title: '누적매출(금월)', curveType: 'none', legend: 'none', lineWidth: 5, height: 200, vAxis: { viewWindowMode:'explicit', viewWindow: { min:-100000 }}};
+      var options = { curveType: 'function', legend: 'none', lineWidth: 8, height: 200};
       var chart = new google.visualization.LineChart(document.getElementById('chart2'));
       ch2.addRows(json);
       chart.draw(ch2, options);
@@ -122,7 +122,7 @@
       var ch3 = new google.visualization.DataTable();
       ch3.addColumn('string', 'Day');
       ch3.addColumn('number', 'Revenue');
-      var options = { title: '최근7일간 매출추이', curveType: 'none', legend: 'none', lineWidth: 5, height: 200, textStyle: { fontName: 'Roboto Slab,Helvetica,Arial,sans-serif', fontSize: 14 }, vAxis: { viewWindowMode:'explicit', viewWindow: { min:-100000 }}};
+      var options = { curveType: 'function', legend: 'none', lineWidth: 8, height: 200, textStyle: { fontName: 'Roboto Slab,Helvetica,Arial,sans-serif', fontSize: 14 }};
       var chart = new google.visualization.LineChart(document.getElementById('chart3'));
       ch3.addRows(json);
       chart.draw(ch3, options);

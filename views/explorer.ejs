@@ -97,7 +97,7 @@ function transactionInfo(block, index) {
     html += '<tr><td>Hash</td><td>' + data.hash + '</td></tr>';
     html += '<tr><td>Gas</td><td>' + data.gas + '</td></tr>';
     html += '<tr><td>Gas Price</td><td>' + data.gasPrice + '</td></tr>';
-    html += '<tr><td>Input</td><td><a href="javascript:viewReceipt(\''+name+'\');">' + name + '</a></td></tr>';
+    html += '<tr><td><a href="javascript:viewReceipt(\''+name+'\');">Receipt</a></td><td><a href="javascript:viewReceipt(\''+name+'\');">' + name + '</a></td></tr>';
     html += '<tr><td>Value</td><td>' + data.value + '</td></tr>';
     html += '<tr><td>R</td><td>' + data.r + '</td></tr>';
     html += '<tr><td>S</td><td>' + data.s + '</td></tr>';

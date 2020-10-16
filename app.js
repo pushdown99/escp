@@ -16,7 +16,7 @@ var rand        = require("random-key");
 let ipfsClient  = require('ipfs-http-client');
 var ipfs        = ipfsClient('http://127.0.0.1:5001');
 var Web3        = require('web3');
-let web3        = new Web3('http://34.85.24.36:8545');
+let web3        = new Web3('http://34.84.103.244:8545');
 var exec        = require('child_process').exec;
 var dotenv      = require('dotenv').config()
  
@@ -77,12 +77,14 @@ function escpUpdate (transaction, idx, block) {
 
 function getBlockNumber() {
   return web3.eth.getBlockNumber().then(num => {
+    console.log(num);
     return num;
   });
 }
 
 function getBlock(id) {
   return web3.eth.getBlock(id).then(block => {
+    console.log(block);
     return block;
   });
 }
@@ -350,6 +352,7 @@ app.get('/json-block/:block', function(req, res){
   var blocks = [];
   for (i = 0; i < maxblock; i++) {
     getBlock(block - i).then(block => {
+      console.log(block);
       blocks.push(block);
       if(blocks.length >= maxblock) {
         blocks.sort((a,b) => (a.number < b.number ? 1:-1));
