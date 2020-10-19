@@ -15,6 +15,8 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.0/moment.min.js"></script>
   <script src="https://cdn.datatables.net/1.10.22/js/jquery.dataTables.min.js"></script>
   <script src="/js/moment.min.js"></script>
+  <link rel="stylesheet" href="https://code.ionicframework.com/ionicons/2.0.1/css/ionicons.min.css">
+  <link rel="stylesheet" href="/css/adminlte.min.css">
   <link rel="stylesheet" href="/css/burger.min.css">
   <link rel="stylesheet" href="/css/style.css">
   <link rel="stylesheet" href="/css/mdi-font/css/material-design-iconic-font.min.css">
@@ -25,9 +27,10 @@
 <body>
   <div class="b-nav">
     <li><a class="b-link b-link--active" href="/">Home</a></li>
-    <li><a class="b-link" href="#">About</a></li>
     <li><a class="b-link" href="/explorer">Explorer</a></li>
-    <li><a class="b-link" href="#">Contact</a></li>
+    <li><a class="b-link" href="/linux-dash">System</a></li>
+    <li><a class="b-link" href="/logs">Logs</a></li>
+    <li><a class="b-link" href="/about">About</a></li>
   </div>
   <div class="b-container">
     <div class="b-menu"><div class="b-bun b-bun--top"></div><div class="b-bun b-bun--mid"></div><div class="b-bun b-bun--bottom"></div></div>
@@ -35,6 +38,38 @@
   </div>
   <script src="/js/burger.min.js"></script>
   <br><br><br><br><br>
+
+  <section class="content">
+    <div class="container-fluid">
+      <div class="row">
+
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-info">
+            <div class="inner"><h3><div id="sales">0</div></h3><p>금일 전체매출</p></div><div class="icon"><i class="ion ion-cash"></i></div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-success">
+            <div class="inner"><h3><div id="users">0</div></h3><p>금일 방문객수</p></div><div class="icon"><i class="ion ion-person-add"></i></div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-warning">
+            <div class="inner"><h3><div id="unitprice">0</div></h3><p>금일 객단가</p></div><div class="icon"><i class="ion ion-pie-graph"></i></div>
+          </div>
+        </div>
+
+        <div class="col-lg-3 col-6">
+          <div class="small-box bg-danger">
+            <div class="inner"><h3><div id="month-sales">0</div></h3><p>이번달 전체매출</p></div><div class="icon"><i class="ion ion-stats-bars"></i></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
 
 <div class="container-fluid">
   <div class="row">
@@ -233,7 +268,7 @@ jQuery(document).ready(function() {
       if(w > 1200) html += '<th>블록</th>';
       if(w > 0) html += '<th>트랜잭션</th>';
       if(w > 1200) html += '<th>인덱스</th>';
-      if(w > 0) html += '<th>분산파일</th>';
+      if(w > 0) html += '<th>영수증</th>';
       html += '</tr>';
       html += '</thead>';
       html += '<tbody>';
@@ -270,10 +305,51 @@ jQuery(document).ready(function() {
     setTimeout(getReceiptTbl, 5000);
   }
 
+  var total_sales = 0;
+  var total_users = 0;
+
+
+  function getSummarySales () {
+    $.getJSON("/summary-sales/" + id, function(data) {
+      var info  = document.getElementById("sales");
+      var unit  = document.getElementById("unitprice");
+      total_sales = parseInt (data[0][0].replace(/,/g,''));
+      info.innerHTML = data[0][0];
+
+      if(total_users == 0) unit.innerHTML = "0";
+      else unit.innerHTML = (total_sales/total_users).toLocaleString();
+    });
+    setTimeout(getSummarySales, 5000);
+  }
+
+  function getSummaryUsers () {
+    $.getJSON("/summary-users/" + id, function(data) {
+      var info  = document.getElementById("users");
+      var unit  = document.getElementById("unitprice");
+      total_users = parseInt (data[0][0]);
+      info.innerHTML = data[0][0];
+      if(total_users == 0) unit.innerHTML = "0";
+      else unit.innerHTML = (total_sales/total_users).toLocaleString();
+    });
+    setTimeout(getSummaryUsers, 5000);
+  }
+
+  function getSummaryMonthSales () {
+    $.getJSON("/summary-month-sales/" + id, function(data) {
+      var info  = document.getElementById("month-sales");
+      info.innerHTML = data[0][0];
+    });
+    setTimeout(getSummaryMonthSales, 5000);
+  }
+
   ///////////////////////////////////////////////////////////////
 
   getRenterTbl ();
   getReceiptTbl ();
+  getSummarySales ();
+  getSummaryUsers ();
+  getSummaryMonthSales ();
+
   setInterval(drawChart, 5000);
 });
 </script>
@@ -290,7 +366,7 @@ function mapBounds () {
   map.fitBounds(bounds);
 
   var zoom = map.getZoom();
-  map.setZoom(zoom > 19 ? 19 : zoom);
+  map.setZoom(zoom > 15 ? 15 : zoom);
 }
 
 function scbaMarker (lat, lng) {

@@ -1,28 +1,30 @@
-var fs          = require('fs');
-var path        = require('path');
-var pdf         = require('pdfkit');
-var request     = require('request');
-var PromiseA    = require('bluebird');
-var jimp        = require('jimp');
-var npos        = require('npos');
-var express     = require('express');
-var router      = express.Router();
-var urlencode   = require('urlencode');
-var app         = express();
-let iconv       = require('iconv-lite');
-var moment      = require('moment-timezone');
-var mysql       = require('mysql');
-var rand        = require("random-key");
-let ipfsClient  = require('ipfs-http-client');
-var ipfs        = ipfsClient('http://127.0.0.1:5001');
-var Web3        = require('web3');
-let web3        = new Web3('http://34.84.103.244:8545');
-var exec        = require('child_process').exec;
-var dotenv      = require('dotenv').config()
- 
-var port        = process.env.PORT || 9901;
+const fs          = require('fs');
+const path        = require('path');
+const pdf         = require('pdfkit');
+const request     = require('request');
+const PromiseA    = require('bluebird');
+const jimp        = require('jimp');
+const npos        = require('npos');
+const express     = require('express');
+const router      = express.Router();
+const urlencode   = require('urlencode');
+const app         = express();
+const iconv       = require('iconv-lite');
+const moment      = require('moment-timezone');
+const mysql       = require('mysql');
+const rand        = require("random-key");
+const ipfsClient  = require('ipfs-http-client');
+const ipfs        = ipfsClient('http://127.0.0.1:5001');
+const Web3        = require('web3');
+const web3        = new Web3('http://34.84.103.244:8545');
+const exec        = require('child_process').exec;
+const dotenv      = require('dotenv').config();
+const winston     = require('winston');
+const { format: { combine, colorize, timestamp, json }, } = winston;
 
-var escpos      = require('escpos');
+const port        = process.env.PORT || 9901;
+
+const escpos      = require('escpos');
 escpos.Console  = require('escpos-console');
 
 app.set('views', __dirname + '/views');
@@ -33,12 +35,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true}));
 app.use(express.static(__dirname + '/public'));
 
-var db = mysql.createConnection({
+const db = mysql.createConnection({
   host     : process.env.DB_HOSTNAME,
   user     : process.env.DB_USERNAME,
   password : process.env.DB_PASSWORD,
   database : process.env.DB_DATABASE
 });
+
+const logger = winston.createLogger({
+  level: "info",
+  format: combine(timestamp(), json()),
+  transports: [
+    new winston.transports.File({ filename: 'escp.log', dirname: path.join(__dirname, "./logs") }),
+  ],
+});
+
+if (process.env.NODE_ENV !== 'production') { logger.add(new winston.transports.Console()); }
+logger.stream = { write: (message) => { logger.info(message); }, };
 
 db.connect(function(err){
   if(err) {
@@ -55,6 +68,8 @@ db.query("set time_zone='+9:00'", function (err, result) {
 });
 
 function toNumber (s) {
+  console.log('s',s);
+  if(s == undefined) return 0;
   return parseInt(s.replace(/\,/g, ''), 10);
 }
 
@@ -117,10 +132,13 @@ function checkReceipt(s) {
 }
 
 function parseReceipt(s, path, hash) {
+    console.log('/usr/bin/php receipt-parser.php ' + '"' + s + '"');
     exec('/usr/bin/php receipt-parser.php ' + '"' + s + '"', function(err, stdout, stderr) {
         var obj = JSON.parse(stdout);
-        console.log(obj);
-        escpInsert (obj, path, hash);
+        if(obj != null) {
+          logger.info(obj);
+          escpInsert (obj, path, hash);
+        }
     });
 }
 
@@ -426,7 +444,7 @@ app.get('/store/:id', function(req, res){
 })
 
 app.get('/renter', function(req, res){
-  var sql = "SELECT id, name, owner, register, tel, address, max(ts) as ts FROM escp GROUP BY register";
+  var sql = "SELECT MAX(id) id, name, owner, register, tel, address, max(ts) as ts FROM escp GROUP BY register ORDER BY id";
   db.query(sql, function (err, result) {
     if (err) {
       console.error("[mysql] Query (" + err + ")");
@@ -654,6 +672,182 @@ app.get('/geocode/:addr', function(req, res){
   });
 });
 
+app.get('/summary-renters', function(req, res){
+  var sql = "SELECT IFNULL(COUNT(c.name),0) total FROM (SELECT name FROM escp GROUP BY name) c"
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      var l = [];
+      result.forEach(e => {
+        var o = [];
+        o.push(e.total);
+        l.push(o);
+      });
+      res.send(JSON.stringify(l));
+    }
+    else res.send("");
+  });
+});
+
+app.get('/summary-sales', function(req, res){
+  var sql = "SELECT FORMAT(IFNULL(sum(c.total),0),0) total FROM( SELECT register, sum(total) total FROM escp WHERE DATE_FORMAT(ts, '%Y-%m-%d') = ADDDATE(CURDATE(),0) GROUP BY register) c";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      var l = [];
+      result.forEach(e => {
+        var o = [];
+        o.push(e.total);
+        l.push(o);
+      });
+      res.send(JSON.stringify(l));
+    }
+    else res.send("");
+  });
+});
+
+app.get('/summary-users', function(req, res){
+  var sql = "SELECT IFNULL(count(*),0) total FROM  escp  WHERE DATE_FORMAT(ts, '%Y-%m-%d') = ADDDATE(CURDATE(),0)";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      var l = [];
+      result.forEach(e => {
+        var o = [];
+        o.push(e.total);
+        l.push(o);
+      });
+      res.send(JSON.stringify(l));
+    }
+    else res.send("");
+  });
+});
+
+app.get('/summary-month-sales', function(req, res){
+  var sql = "SELECT FORMAT(IFNULL(sum(c.total),0),0) total FROM( SELECT register, sum(total) total FROM escp WHERE DATE_FORMAT(ts, '%Y-%m') = DATE_FORMAT(ADDDATE(CURDATE(),0), '%Y-%m') GROUP BY register) c";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      var l = [];
+      result.forEach(e => {
+        var o = [];
+        o.push(e.total);
+        l.push(o);
+      });
+      res.send(JSON.stringify(l));
+    }
+    else res.send("");
+  });
+});
+
+app.get('/summary-renters/:id', function(req, res){
+  var id = req.params.id.toString();
+  var sql = "SELECT IFNULL(COUNT(c.name),0) total FROM (SELECT name FROM escp GROUP BY name) c"
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      var l = [];
+      result.forEach(e => {
+        var o = [];
+        o.push(e.total);
+        l.push(o);
+      });
+      res.send(JSON.stringify(l));
+    }
+    else res.send("");
+  });
+});
+
+app.get('/summary-sales/:id', function(req, res){
+  var id = req.params.id.toString();
+  var sql = "SELECT FORMAT(IFNULL(sum(c.total),0),0) total FROM( SELECT register, sum(total) total FROM escp WHERE DATE_FORMAT(ts, '%Y-%m-%d') = ADDDATE(CURDATE(),0) AND register = '" + id + "' GROUP BY register) c";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      var l = [];
+      result.forEach(e => {
+        var o = [];
+        o.push(e.total);
+        l.push(o);
+      });
+      res.send(JSON.stringify(l));
+    }
+    else res.send("");
+  });
+});
+
+app.get('/summary-users/:id', function(req, res){
+  var id = req.params.id.toString();
+  var sql = "SELECT IFNULL(count(*),0) total FROM  escp  WHERE DATE_FORMAT(ts, '%Y-%m-%d') = ADDDATE(CURDATE(),0) AND register = '" + id + "'";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      var l = [];
+      result.forEach(e => {
+        var o = [];
+        o.push(e.total);
+        l.push(o);
+      });
+      res.send(JSON.stringify(l));
+    }
+    else res.send("");
+  });
+});
+
+app.get('/summary-month-sales/:id', function(req, res){
+  var id = req.params.id.toString();
+  var sql = "SELECT FORMAT(IFNULL(sum(c.total),0),0) total FROM( SELECT register, sum(total) total FROM escp WHERE DATE_FORMAT(ts, '%Y-%m') = DATE_FORMAT(ADDDATE(CURDATE(),0), '%Y-%m') AND register = '" + id + "' GROUP BY register) c";
+  db.query(sql, function (err, result) {
+    if (err) {
+      console.error("[mysql] Query (" + err + ")");
+      console.error("[mysql] * " + sql);
+    }
+    else if(result.length > 0) {
+      var l = [];
+      result.forEach(e => {
+        var o = [];
+        o.push(e.total);
+        l.push(o);
+      });
+      res.send(JSON.stringify(l));
+    }
+    else res.send("");
+  });
+});
+
+
+app.get('/linux-dash', function(req, res){
+  res.render('linux-dash');
+});
+
+app.get('/logs', function(req, res){
+  res.render('kibana');
+});
+
+app.get('/about', function(req, res){
+  res.render('about');
+});
 
 ////////////////////////////////////////////////////////
 // listener

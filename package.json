@@ -11,6 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "admin-lte": "^3.0.5",
     "bluebird": "^3.7.2",
     "child_process": "^1.0.2",
     "dotenv": "^8.2.0",
@@ -19,6 +20,7 @@
     "escpos-console": "^3.0.0-alpha.2",
     "express": "^4.17.1",
     "fs": "0.0.1-security",
+    "http": "0.0.1-security",
     "iconv-lite": "^0.6.2",
     "ipfs-http-client": "^47.0.1",
     "jimp": "^0.16.1",
@@ -31,6 +33,8 @@
     "request": "^2.88.2",
     "urlencode": "^1.1.0",
     "web3": "^1.3.0",
-    "winston": "^3.3.3"
+    "websocket": "^1.0.32",
+    "winston": "^3.3.3",
+    "yargs": "^16.1.0"
   }
 }
