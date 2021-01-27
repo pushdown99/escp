@@ -75,7 +75,7 @@ function toNumber (s) {
 
 function escpInsert (obj, url, hash) {
   var sql = "INSERT INTO escp (name, owner, register, tel, address, items, ipfs, transaction, block, exvat, vat, total, receive, cash, card, remain, ts) " +
-            "values('" + obj.name + "', '" + obj.owner + "', " + "'" + obj.register + "', '" + obj.tel + "', '" + obj.address + "', '" + obj.items + "', '" + url + "', '" + hash +  "', 0, " + toNumber(obj.exvat) + ", " + toNumber(obj.vat) + ", " + toNumber(obj.total) + ", " + toNumber(obj.receive) + ", " + toNumber(obj.cash) + ", 0 , " + toNumber(obj.remain) + ", FROM_UNIXTIME(" + moment(obj.date)/1000 + "))";
+            "values('" + obj.name + "', '" + obj.owner + "', " + "'" + obj.register + "', '" + obj.tel + "', '" + obj.address + "', '" + obj.items + "', '" + url + "', '" + hash +  "', 0, " + toNumber(obj.exvat) + ", " + toNumber(obj.vat) + ", " + toNumber(obj.total) + ", " + toNumber(obj.receive) + ", " + toNumber(obj.cash) + ", " + toNumber(obj.card) + " , " + toNumber(obj.remain) + ", FROM_UNIXTIME(" + moment(obj.date)/1000 + "))";
   db.query(sql, function (err, result) {
     if (err) console.error("[mysql] Insert (" + err + ") : " + sql);
   });

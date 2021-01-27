@@ -317,7 +317,7 @@ jQuery(document).ready(function() {
       info.innerHTML = data[0][0];
 
       if(total_users == 0) unit.innerHTML = "0";
-      else unit.innerHTML = (total_sales/total_users).toLocaleString();
+      else unit.innerHTML = parseInt(total_sales/total_users).toLocaleString();
     });
     setTimeout(getSummarySales, 5000);
   }
@@ -329,7 +329,7 @@ jQuery(document).ready(function() {
       total_users = parseInt (data[0][0]);
       info.innerHTML = data[0][0];
       if(total_users == 0) unit.innerHTML = "0";
-      else unit.innerHTML = (total_sales/total_users).toLocaleString();
+      else unit.innerHTML = parseInt(total_sales/total_users).toLocaleString();
     });
     setTimeout(getSummaryUsers, 5000);
   }
